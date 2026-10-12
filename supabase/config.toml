@@ -1,0 +1,4 @@
+project_id = "sottobosco"
+
+[functions.notify]
+verify_jwt = false
