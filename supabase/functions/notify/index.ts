@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
       publicKey: Deno.env.get('VAPID_PUBLIC_KEY'),
       subject: Deno.env.get('VAPID_SUBJECT') || 'https://github.com',
     };
-    const payload = JSON.stringify({ title: kind === 'invite' ? `${name} ti invita` : name, body: text, tag: `sb-${kind}-${user.id}` });
+    const url = typeof b.url === 'string' && /^[a-z0-9._-]*\.html(#[a-z0-9=-]*)?$/i.test(b.url) ? b.url : undefined;
+    const payload = JSON.stringify({ title: kind === 'invite' ? `${name} ti invita` : name, body: text, tag: `sb-${kind}-${user.id}`, url });
 
     let sent = 0;
     const gone = [];

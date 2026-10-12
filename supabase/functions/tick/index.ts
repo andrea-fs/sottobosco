@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       // delete first so a slow push never sends twice
       await rest(`timers?user_id=eq.${t.user_id}&end_at=eq.${encodeURIComponent(t.end_at)}`, { method: 'DELETE' });
       const subs = (await rest(`push_subs?select=endpoint,sub&user_id=eq.${t.user_id}`)) || [];
-      const payload = JSON.stringify({ title: t.title, body: t.body, tag: 'sb-end' });
+      const payload = JSON.stringify({ title: t.title, body: t.body, tag: 'sb-end', url: 'forest.html' });
       for (const s of subs) {
         try {
           const status = await sendPush(s.sub, payload, vapid, 600);

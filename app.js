@@ -494,7 +494,7 @@ setInterval(()=>{if(view==='focus'&&others.size)renderPartners();},20000);
 /* ---------- messages between the two of you: status, invites, push ---------- */
 const CFG=window.SOTTOBOSCO_CONFIG||{};
 let lastInvite=0;
-function notify(kind,text){try{if(window.SB&&text)window.SB.functions.invoke('notify',{body:{kind,text:String(text).slice(0,200)}}).catch(()=>{});}catch(e){}}
+function notify(kind,text){try{if(window.SB&&text)window.SB.functions.invoke('notify',{body:{kind,text:String(text).slice(0,200),url:'forest.html'}}).catch(()=>{});}catch(e){}}
 function agoTxt(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'adesso';if(m<60)return m+' min fa';const h=Math.round(m/60);return h<24?h+(h===1?' ora fa':' ore fa'):'ieri';}
 const STATUS_IDEAS=['Sto studiando','Sto lavorando','In palestra','Pausa caffè, mi chiami?','In viaggio','A lezione','Sto cucinando','Mi manchi'];
 function freshStatus(st){return st&&st.text&&Date.now()-st.at<12*3600e3?st:null;}
@@ -976,4 +976,8 @@ $('#resetBox').addEventListener('click',e=>{const b=e.target.closest('button');i
 checkActive();
 if(S.active)lockOn();
 renderAll();
+// opened from another Nido app (e.g. "Leggi con il timer" in Biblioteca): prefill note and label
+(function(){const q=new URLSearchParams(location.search);if(!q.has('note')&&!q.has('tag'))return;
+  if(!S.active){S.mode='focus';const t=+q.get('tag');if(TAGS[t])S.sel.tag=t;const n=q.get('note');if(n)$('#noteIn').value=n.slice(0,120);commit();toast('Pronto: scegli la durata e tocca Pianta.');}
+  history.replaceState(null,'',location.pathname);})();
 })();
