@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Onest:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="app.css?v=2">
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 <div class="gate" id="gate">
@@ -110,6 +110,7 @@
       </div>
       <div class="seg" role="tablist" id="gWho" hidden></div>
       <div class="meadow" id="meadow"><canvas id="gCv" aria-label="Il bosco del periodo selezionato"></canvas><div class="tip" id="gTip" hidden></div></div>
+      <p class="small muted" id="gGrow" style="text-align:center;margin-top:-8px"></p>
       <p class="empty" id="gEmpty" hidden>Qui è ancora tutto prato. Completa un pomodoro e la prima pianta spunterà al centro.</p>
       <div class="gsum">
         <div><b id="gsPlants">0</b><span>piante</span></div>
@@ -126,6 +127,8 @@
       <div class="shop" id="shop"></div>
       <div class="sec-h" style="margin-top:8px"><h1 style="font-size:24px">I lavoretti dello gnomo</h1><p>In modalità Lavoro lo gnomo costruisce un oggetto ogni 15 minuti. I turni lunghi portano le costruzioni più grandi.</p></div>
       <div class="shop" id="crafts"></div>
+      <div class="sec-h" style="margin-top:8px"><h1 style="font-size:24px">La fauna del bosco</h1><p>Gli animali si trasferiscono da voi quando raggiungete dei traguardi, contando le piante di tutti e due.</p></div>
+      <div class="shop" id="fauna"></div>
     </section>
 
     <!-- STATS -->
@@ -167,9 +170,9 @@
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="config.js?v=1"></script>
+<script src="config.js?v=3"></script>
 <script src="vendor/supabase.js"></script>
-<script src="auth.js?v=1"></script>
+<script src="auth.js?v=3"></script>
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 </script>

@@ -94,8 +94,8 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-inline:16px
 .iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line)}
 .iconbtn svg{width:18px;height:18px}
 .iconbtn[disabled]{opacity:.35;cursor:default}
-.meadow{position:relative;border-radius:22px;background:linear-gradient(180deg,var(--surface) 0%,var(--stage) 100%);border:1px solid var(--line);overflow:hidden}
-.meadow canvas{display:block;width:100%}
+.meadow{position:relative;border-radius:22px;background:linear-gradient(180deg,var(--surface) 0%,var(--stage) 100%);border:1px solid var(--line);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.meadow canvas{display:block}
 .meadow .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:9px;width:max-content;max-width:220px;text-align:center;transform:translate(-50%,-100%)}
 .note{display:block;width:100%;max-width:360px;margin:0 auto;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
 .note::placeholder,.sheet textarea::placeholder{color:var(--muted)}
@@ -229,3 +229,5 @@ input[type=range]{accent-color:var(--accent);width:130px}
 .ideas button{padding:8px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:14px}
 .sheet #statusIn{margin:0 auto}
 .btn.sm{min-height:36px;min-width:0;padding:0 14px;font-size:14px;flex:none}
+.waiting{flex:none;margin-left:auto;font-size:12px;color:var(--muted);font-style:italic}
+.invite-card{border-color:var(--pollen);background:var(--pollen-bg)}
