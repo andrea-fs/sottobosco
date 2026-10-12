@@ -35,6 +35,22 @@
     c.fillStyle = '#f0b42c'; c.beginPath(); c.arc(62, 32, 5.5, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#5f9443'; c.lineWidth = 1.4; [[30, 92], [96, 95], [44, 98], [84, 88]].forEach(([x, y]) => { c.beginPath(); c.moveTo(x, y); c.lineTo(x - 2, y - 6); c.moveTo(x, y); c.lineTo(x + 2, y - 7); c.stroke(); });
   }
+  function globeArt(cv) {
+    const c = canvas(cv, 128, 128);
+    const g = c.createRadialGradient(52, 46, 6, 64, 64, 50); g.addColorStop(0, '#7fb2d9'); g.addColorStop(1, '#2b5f8c');
+    c.fillStyle = g; c.beginPath(); c.arc(64, 64, 46, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.arc(64, 64, 46, 0, Math.PI * 2); c.clip();
+    c.fillStyle = '#f2efe4';
+    [[40, 44, 18, 12, .3], [56, 70, 10, 18, .2], [86, 46, 20, 14, -.2], [92, 78, 12, 9, .4], [30, 82, 9, 6, 0]].forEach(([x, y, rx, ry, r]) => { c.beginPath(); c.ellipse(x, y, rx, ry, r, 0, Math.PI * 2); c.fill(); });
+    c.fillStyle = '#efc35e'; c.beginPath(); c.ellipse(86, 46, 9, 7, -.2, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1;
+    for (let i = 1; i < 4; i++) { c.beginPath(); c.ellipse(64, 64, 46, 46 * i / 4, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(64, 64, 46 * i / 4, 46, 0, 0, Math.PI * 2); c.stroke(); }
+    c.restore();
+    c.strokeStyle = '#e76f51'; c.lineWidth = 2.2; c.setLineDash([5, 4]); c.lineCap = 'round';
+    c.beginPath(); c.moveTo(42, 48); c.quadraticCurveTo(62, 18, 88, 44); c.stroke(); c.setLineDash([]);
+    [[42, 48], [88, 44]].forEach(([x, y]) => { c.fillStyle = '#e76f51'; c.beginPath(); c.arc(x, y, 4.5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.6; c.stroke(); });
+    c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(48, 42, 14, 9, -.6, 0, Math.PI * 2); c.fill();
+  }
   function shelfArt(el, titles) {
     const h = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) x = Math.imul(x ^ s.charCodeAt(i), 16777619); return x >>> 0; };
     const list = titles.length ? titles.slice(0, 7) : ['a', 'bb', 'ccc', 'dddd', 'eeeee', 'ffffff'];
@@ -94,7 +110,7 @@
     await ensureProfile(data.session.user).catch(() => {});
     C = await N.require();
     $('#gate').hidden = true; $('#hub').hidden = false;
-    greet(); forestArt($('#artForest')); render(); live();
+    greet(); forestArt($('#artForest')); globeArt($('#artAtlas')); render(); live();
     N.pushState().then((s) => { pushNow = s; renderBanner(); });
   }
   function greet() {
@@ -105,7 +121,7 @@
     $('#hDate').textContent = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + season;
     $('#meBtn').innerHTML = N.avatar(C.me, 44);
   }
-  const S = { forests: [], months: [], readings: [], books: [] };
+  const S = { forests: [], months: [], readings: [], books: [], places: [], trips: [] };
   async function load() {
     const d = new Date(), month = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const [f, mo, r] = await Promise.all([
@@ -113,6 +129,8 @@
       SB.from('months').select('user_id,list').eq('month', month),
       SB.from('readings').select('book_id,user_id,status,progress,updated_at').in('status', ['reading', 'read']),
     ]);
+    const [pl, tr] = await Promise.all([SB.from('places').select('id,name,country_code'), SB.from('trips').select('place_id,start_on,end_on')]);
+    S.places = pl.error ? [] : (pl.data || []); S.trips = tr.error ? [] : (tr.data || []);
     S.forests = f.data || []; S.months = mo.data || [];
     S.readings = r.error ? [] : (r.data || []);
     const ids = [...new Set(S.readings.map((x) => x.book_id))];
@@ -164,12 +182,20 @@
     if (readYear) bl.push(`<span class="dim">${readYear} ${readYear === 1 ? 'libro finito' : 'libri finiti'} insieme nel ${yr}</span>`);
     $('#tBooks').innerHTML = bl.join('');
     shelfArt($('#artBooks'), S.books.map((b) => b.title));
+    // atlas tile
+    const td = new Date(); const tdy = td.getFullYear() + '-' + String(td.getMonth() + 1).padStart(2, '0') + '-' + String(td.getDate()).padStart(2, '0');
+    const doneT = S.trips.filter((t) => t.start_on <= tdy), nextT = S.trips.filter((t) => t.start_on > tdy).sort((a, b) => a.start_on.localeCompare(b.start_on))[0];
+    const vis = new Set(doneT.map((t) => t.place_id)), ctry = new Set(S.places.filter((p) => vis.has(p.id)).map((p) => p.country_code));
+    const al = [];
+    if (nextT) { const p = S.places.find((x) => x.id === nextT.place_id) || {}; const n = Math.round((new Date(nextT.start_on + 'T12:00:00') - new Date(tdy + 'T12:00:00')) / 864e5); al.push(`<span>Prossimo viaggio: ${esc(p.name || '')} ${n === 1 ? 'domani' : 'tra ' + n + ' giorni'}</span>`); }
+    al.push(vis.size ? `<span class="${nextT ? 'dim' : ''}">${vis.size} ${vis.size === 1 ? 'città' : 'città'} · ${ctry.size} ${ctry.size === 1 ? 'paese' : 'paesi'} insieme</span>` : '<span>Segnate il primo posto dove siete stati</span>');
+    $('#tAtlas').innerHTML = al.join('');
   }
   let rt = null; const refresh = () => { clearTimeout(rt); rt = setTimeout(() => load().catch(() => {}), 300); };
   function live() {
     load().catch(() => {});
     const ch = SB.channel('nido');
-    ['forests', 'months', 'readings', 'profiles'].forEach((t) => ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, refresh));
+    ['forests', 'months', 'readings', 'profiles', 'places', 'trips'].forEach((t) => ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, refresh));
     ch.subscribe();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { greet(); refresh(); } });
     setInterval(() => { if (!document.hidden) render(); }, 30000);

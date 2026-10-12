@@ -1,8 +1,8 @@
 // Offline shell + push notifications.
-const CACHE = 'nido-v4';
+const CACHE = 'nido-v5';
 const SHELL = [
   './', './index.html', './hub.js', './hub.css', './forest.html', './app.css', './app.js', './forest-boot.js',
-  './books.html', './books.css', './books.js', './core/base.css', './core/core.js', './config.js', './vendor/supabase.js',
+  './books.html', './books.css', './books.js', './atlas.html', './atlas.css', './atlas.js', './vendor/d3.min.js', './vendor/topojson-client.min.js', './data/countries-110m.json', './data/countries-meta.json', './core/base.css', './core/core.js', './config.js', './vendor/supabase.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 

@@ -17,8 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Onest:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="core/base.css?v=4">
-<link rel="stylesheet" href="hub.css?v=4">
+<link rel="stylesheet" href="core/base.css?v=5">
+<link rel="stylesheet" href="hub.css?v=5">
 <style>.gate:not(.ready){visibility:hidden}</style>
 </head>
 <body>
@@ -71,6 +71,11 @@
         <div class="t-art shelfart" id="artBooks" aria-hidden="true"></div>
         <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </a>
+      <a class="tile atlas" href="atlas.html">
+        <div class="t-text"><div><span class="t-kicker">Viaggi</span><h3>Atlante</h3></div><div class="t-live" id="tAtlas"><span>I posti dove siete stati</span></div></div>
+        <canvas class="t-art" id="artAtlas" aria-hidden="true"></canvas>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      </a>
       <div class="tile soon">
         <div class="t-text"><span class="t-kicker">Prossimamente</span><h3>La prossima app</h3><p class="small" style="margin-top:6px">Un’idea per voi due? Chiedila a Claude e comparirà qui.</p></div>
       </div>
@@ -81,9 +86,9 @@
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="config.js?v=4"></script>
+<script src="config.js?v=5"></script>
 <script src="vendor/supabase.js"></script>
-<script src="core/core.js?v=4"></script>
-<script src="hub.js?v=4"></script>
+<script src="core/core.js?v=5"></script>
+<script src="hub.js?v=5"></script>
 </body>
 </html>
