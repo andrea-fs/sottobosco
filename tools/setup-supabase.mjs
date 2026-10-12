@@ -1,4 +1,5 @@
 // One-time backend setup through the Supabase Management API.
+// Step 4 (function deploy) can fail on some projects: then run tools/deploy-function.mjs.
 // Usage: node tools/setup-supabase.mjs <project-ref> <email1> <email2> [site-url]
 // Reads the personal access token from .secrets/supabase-token.txt (never printed).
 import { readFileSync, writeFileSync } from 'node:fs';
