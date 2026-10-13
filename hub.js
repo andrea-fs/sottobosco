@@ -51,6 +51,15 @@
     [[42, 48], [88, 44]].forEach(([x, y]) => { c.fillStyle = '#e76f51'; c.beginPath(); c.arc(x, y, 4.5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.6; c.stroke(); });
     c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(48, 42, 14, 9, -.6, 0, Math.PI * 2); c.fill();
   }
+  function moonArt(cv) {
+    const c = canvas(cv, 128, 128);
+    let s = 11; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 22; i++) { c.fillStyle = 'rgba(255,255,255,' + (.3 + rnd() * .6) + ')'; c.beginPath(); c.arc(rnd() * 128, rnd() * 128, rnd() * 1.4 + .4, 0, 7); c.fill(); }
+    const g = c.createRadialGradient(64, 60, 10, 64, 64, 60); g.addColorStop(0, 'rgba(255,240,200,.25)'); g.addColorStop(1, 'rgba(255,240,200,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = '#f4ecc8'; c.beginPath(); c.arc(64, 62, 34, 0, 7); c.fill();
+    c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(80, 50, 30, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.font = '13px serif'; c.fillText('z', 88, 70); c.font = '17px serif'; c.fillText('z', 98, 56); c.font = '22px serif'; c.fillText('z', 106, 38);
+  }
   function shelfArt(el, titles) {
     const h = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) x = Math.imul(x ^ s.charCodeAt(i), 16777619); return x >>> 0; };
     const list = titles.length ? titles.slice(0, 7) : ['a', 'bb', 'ccc', 'dddd', 'eeeee', 'ffffff'];
@@ -110,7 +119,7 @@
     await ensureProfile(data.session.user).catch(() => {});
     C = await N.require();
     $('#gate').hidden = true; $('#hub').hidden = false;
-    greet(); forestArt($('#artForest')); globeArt($('#artAtlas')); render(); live();
+    greet(); forestArt($('#artForest')); globeArt($('#artAtlas')); moonArt($('#artDreams')); render(); live();
     N.pushState().then((s) => { pushNow = s; renderBanner(); });
   }
   function greet() {
@@ -130,6 +139,7 @@
       SB.from('readings').select('book_id,user_id,status,progress,updated_at').in('status', ['reading', 'read']),
     ]);
     const [pl, tr] = await Promise.all([SB.from('places').select('id,name,country_code'), SB.from('trips').select('place_id,start_on,end_on')]);
+    { const dd = new Date(); const ds = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0'); const dr = await SB.from('dreams').select('user_id,mood').eq('night', ds); S.dreams = dr.error ? [] : (dr.data || []); }
     S.places = pl.error ? [] : (pl.data || []); S.trips = tr.error ? [] : (tr.data || []);
     S.forests = f.data || []; S.months = mo.data || [];
     S.readings = r.error ? [] : (r.data || []);
@@ -190,12 +200,15 @@
     if (nextT) { const p = S.places.find((x) => x.id === nextT.place_id) || {}; const n = Math.round((new Date(nextT.start_on + 'T12:00:00') - new Date(tdy + 'T12:00:00')) / 864e5); al.push(`<span>Prossimo viaggio: ${esc(p.name || '')} ${n === 1 ? 'domani' : 'tra ' + n + ' giorni'}</span>`); }
     al.push(vis.size ? `<span class="${nextT ? 'dim' : ''}">${vis.size} ${vis.size === 1 ? 'città' : 'città'} · ${ctry.size} ${ctry.size === 1 ? 'paese' : 'paesi'} insieme</span>` : '<span>Segnate il primo posto dove siete stati</span>');
     $('#tAtlas').innerHTML = al.join('');
+    const EMO = { joy: '😊', fun: '😂', love: '🥰', calm: '😌', wonder: '😮', confused: '😵‍💫', anxiety: '😰', fear: '😨', anger: '😠', sad: '😢', blank: '🌫️' };
+    const dl = [C.me].concat(C.others).map((p) => { const ms = (S.dreams || []).filter((d) => d.user_id === p.id).map((d) => EMO[d.mood] || '').join(' '); return ms ? `<span>${p.id === C.uid ? 'Tu' : esc(p.name)}: ${ms}</span>` : ''; }).filter(Boolean);
+    $('#tDreams').innerHTML = dl.length ? '<span class="dim">Stanotte</span>' + dl.join('') : '<span>Com’era stanotte? Basta una faccina.</span>';
   }
   let rt = null; const refresh = () => { clearTimeout(rt); rt = setTimeout(() => load().catch(() => {}), 300); };
   function live() {
     load().catch(() => {});
     const ch = SB.channel('nido');
-    ['forests', 'months', 'readings', 'profiles', 'places', 'trips'].forEach((t) => ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, refresh));
+    ['forests', 'months', 'readings', 'profiles', 'places', 'trips', 'dreams'].forEach((t) => ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, refresh));
     ch.subscribe();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { greet(); refresh(); } });
     setInterval(() => { if (!document.hidden) render(); }, 30000);

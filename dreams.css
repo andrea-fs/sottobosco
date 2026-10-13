@@ -1,0 +1,60 @@
+/* Sogni — a night page: one tap on a face saves the dream, everything else is optional. */
+:root{--dream:#6c5bd4;--dream-bg:#ece9fb;--sky1:#232048;--sky2:#3a3270}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--dream:#a99cf2;--dream-bg:#25213f;--sky1:#14122b;--sky2:#28224f}}
+:root[data-theme="dark"]{--dream:#a99cf2;--dream-bg:#25213f;--sky1:#14122b;--sky2:#28224f}
+#app{height:100%;display:flex;flex-direction:column;max-width:620px;margin:0 auto}
+.dr-top{display:flex;align-items:center;gap:10px;padding:10px 16px 6px}
+.home{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--muted);flex:none}
+.home svg{width:22px;height:22px}
+.dr-top h1{font-size:26px;line-height:1.1}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-inline:16px;padding-block:6px 30px;display:flex;flex-direction:column;gap:18px}
+.boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px}
+.tonight{position:relative;overflow:hidden;border-radius:26px;padding:20px 16px 16px;color:#efeaff;background:radial-gradient(120% 90% at 80% 0%,#4b3f8f 0%,transparent 60%),linear-gradient(170deg,var(--sky2),var(--sky1));box-shadow:var(--shadow)}
+.tonight .stars{position:absolute;inset:0;pointer-events:none;opacity:.8}
+.tonight h2{position:relative;font-size:24px}
+.tonight p{position:relative;font-size:13.5px;opacity:.8;margin-top:3px}
+.moods{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}
+.mood{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#efeaff;font-size:11.5px;font-weight:600;transition:transform .15s,background .15s}
+.mood:active{transform:scale(.94)}
+.mood span{font-size:30px;line-height:1}
+.mood[aria-pressed="true"]{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)}
+.logged{position:relative;display:flex;align-items:center;gap:14px;margin-top:14px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.1)}
+.logged .big{font-size:40px;line-height:1}
+.logged b{display:block;font-size:16px}
+.logged small{opacity:.75;font-size:12.5px}
+.logged .btn{margin-left:auto;background:rgba(255,255,255,.16);color:#fff;border:0}
+.sec{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sec h2{font-size:20px}
+.nights{display:grid;grid-template-columns:auto repeat(14,minmax(0,1fr));gap:3px;align-items:center;font-size:11px;color:var(--muted)}
+.nights .who{padding-right:6px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.nights .cell{aspect-ratio:1;border-radius:7px;background:var(--surface2);display:grid;place-items:center;font-size:clamp(11px,3.4vw,17px)}
+.nights .cell.on{background:var(--dream-bg)}
+.nights .d{text-align:center;font-size:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.mchip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.mchip span{font-size:17px}
+.feed{display:flex;flex-direction:column;gap:14px}
+.night h3{font-family:var(--font-body);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.night .list{display:flex;flex-direction:column;gap:8px}
+.entry{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;text-align:left;padding:12px 14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);width:100%}
+.entry .em{font-size:34px;line-height:1}
+.entry b{font-weight:600}
+.entry .meta{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.entry p{font-size:14.5px;margin-top:4px;overflow-wrap:anywhere;white-space:pre-wrap}
+.entry .lock{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--surface2)}
+.same{padding:12px 14px;border-radius:16px;background:var(--dream-bg);font-size:14px}
+.empty{color:var(--muted);text-align:center;font-size:14px;padding:16px 0}
+.dsheet{display:flex;flex-direction:column;gap:14px}
+.dsheet .head{display:flex;align-items:center;gap:14px}
+.dsheet .head .em{font-size:52px;line-height:1}
+.dsheet .head h2{font-size:24px}
+.pick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+.pick button{font-size:24px;padding:6px 0;border-radius:12px;border:1px solid transparent}
+.pick button[aria-pressed="true"]{border-color:var(--dream);background:var(--dream-bg)}
+.set{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.set .lbl b{display:block;font-weight:600;font-size:14px}
+.set .lbl small{color:var(--muted);font-size:12.5px}
+.btn.dreamy{background:var(--dream);color:#fff;box-shadow:var(--shadow)}
+.row2{display:flex;gap:8px;flex-wrap:wrap}
+.row2 .btn{flex:1}
+main>*{flex:none}

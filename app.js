@@ -171,6 +171,11 @@ const SPECIES=[
   {k:'oak',n:'Quercia',l:'Quercus robur',f:1,price:200,min:60,draw:dOak,pal:{leaf:'#4f8d3e',leaf2:'#3a7031',leaf3:'#6fab50',trunk:'#5b4330',flower:'#a06e35'}},
 ];
 const SP=Object.fromEntries(SPECIES.map(s=>[s.k,s]));
+// pomodori needed before a plant is fully grown (each at least sp.min minutes, any day)
+const STAGES={daisy:1,clover:1,tulip:1,fern:2,lavender:2,poppy:2,tomato:3,sunflower:4,fir:8,cherry:10,willow:1,oak:15};
+const stagesOf=k=>STAGES[k]||1;
+const growDone=k=>((S.grow||{})[k]||{}).done||0;
+const growLine=k=>{const n=stagesOf(k);return n>1?n+' sessioni':'1 sessione';};
 const BASE={stem:'#4f8a3c',leaf:'#5c9d48',leaf2:'#447d36',leaf3:'#7cb85e',flower:'#ffffff',flower2:'#eeeeee',center:'#f2b630',trunk:'#6b4a32',fruit:'#e0402e'};
 const DRY={stem:'#8b7a55',leaf:'#a48d5f',leaf2:'#8a7449',leaf3:'#b39d70',flower:'#b9a27c',flower2:'#9c8460',center:'#6b5638',trunk:'#6e5a43',fruit:'#9c7a58'};
 const GOLD={flower:'#f6c84a',flower2:'#dca21e',fruit:'#f0b429',center:'#c9781a'};
@@ -371,8 +376,17 @@ const ITEMS=[
 ];
 const ITEM=Object.fromEntries(ITEMS.map(i=>[i.k,i]));
 function hstr(str){let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return h>>>0;}
+// hours of work each project takes; progress is kept per project across shifts (S.build)
+const ITEM_H={mushrooms:2,stones:3,fence:8,lantern:10,bench:16,hive:20,scarecrow:24,pond:32,well:40,house:60};
+const costOf=k=>(ITEM_H[k]||8)*60;
+function fmtH(min){const h=Math.floor(min/60),m=Math.round(min%60);return h?(h+' h'+(m?' '+m:'')):m+' min';}
+function builtCount(k){let n=0;S.sessions.forEach(s=>{if(s[3]==='work')(s[9]||[]).forEach(x=>{if(x===k)n++;});});return n;}
+function nextProject(cur,justBuilt){const order=ITEMS.map(i=>i.k).sort((a,b)=>ITEM_H[a]-ITEM_H[b]);return order.find(k=>builtCount(k)+justBuilt.filter(x=>x===k).length===0)||cur;}
+function simWork(b0,min){const b={cur:(b0&&ITEM[b0.cur])?b0.cur:'mushrooms',prog:Object.assign({},(b0&&b0.prog)||{})};const built=[];let left=min,guard=0;
+  while(left>0&&guard++<60){const need=costOf(b.cur)-(b.prog[b.cur]||0);if(left>=need){built.push(b.cur);b.prog[b.cur]=0;left-=need;b.cur=nextProject(b.cur,built);}else{b.prog[b.cur]=(b.prog[b.cur]||0)+left;left=0;}}
+  return{b,built};}
 function itemFor(id,b){const r=rng(hstr(String(id))+b*7919);r();const x=r();const tier=b===0?0:b===1?1:(x<.45?2:x<.8?1:0);const pool=ITEMS.filter(i=>i.tier===tier);return pool[Math.floor(r()*pool.length)].k;}
-function workBuilt(a,now){const el=Math.max(0,Math.min(now,endTs(a))-a.start);const b=Math.floor(el/BLOCK_MS);const out=[];for(let i=0;i<b;i++)out.push(itemFor(a.id,i));return{el,b,built:out,cur:itemFor(a.id,b),prog:(el%BLOCK_MS)/BLOCK_MS};}
+function workBuilt(a,now){const el=Math.max(0,Math.min(now,endTs(a))-a.start);const sim=simWork(a.build0||S.build,el/60000);const cur=sim.b.cur,done=sim.b.prog[cur]||0;return{el,b:sim.built.length,built:sim.built,cur,prog:clamp(done/costOf(cur)),done,need:costOf(cur),build:sim.b};}
 function drawItem(c,key,x,y,s,k,t){const it=ITEM[key];if(!it||k<=0)return;c.save();c.translate(x,y);c.globalAlpha=Math.min(1,k*1.6);c.scale(.35+.65*k,.35+.65*k);it.d(c,s,REDUCED?0:(t||0));c.restore();}
 function workScene(c,cx,cy,W,t,o){
   const rx=W*.27,ry=rx*.27,s=W*.24;const ents=[];
@@ -390,11 +404,11 @@ const TAGS=[{n:'Studio',c:'#4f86d9'},{n:'Lavoro',c:'#d0832b'},{n:'Lettura',c:'#9
 const SOUNDS=[['off','Silenzio'],['rain','Pioggia'],['brook','Ruscello'],['wind','Vento'],['crickets','Grilli']];
 const QUOTES=['Le radici crescono in silenzio.','Una foglia alla volta.','Il bosco non ha fretta, eppure tutto si compie.','Resta qui: la tua pianta ti sta aspettando.','Ogni minuto è un anello in più nel tronco.','Telefono giù, linfa su.','Terreno fertile: niente notifiche.','Respira. Anche gli alberi lo fanno.'];
 const LIMITS={focus:{min:10,max:120,step:5},work:{min:15,max:15,step:1},short:{min:1,max:15,step:1},long:{min:5,max:45,step:5}};
-function defaultState(){return{v:1,updatedAt:0,sessions:[],unlocked:['daisy','clover'],settings:{focus:25,short:5,long:15,every:4,strict:false,chime:true,vol:.6,sound:'off',partnerAlerts:true,shareActivity:true},sel:{sp:'daisy',tag:0},mode:'focus',active:null,cycle:0};}
+function defaultState(){return{v:1,build:{cur:'mushrooms',prog:{}},grow:{},updatedAt:0,sessions:[],unlocked:['daisy','clover'],settings:{focus:25,short:5,long:15,every:4,strict:false,chime:true,vol:.6,sound:'off',partnerAlerts:true,shareActivity:true},sel:{sp:'daisy',tag:0},mode:'focus',active:null,cycle:0};}
 const LS='sottobosco.v1.'+((window.SOTTOBOSCO_USER||{}).id||'local');
 function loadLocal(){try{const r=localStorage.getItem(LS);if(r){const o=JSON.parse(r);return normalize(o);}}catch(e){}return null;}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}}
-function normalize(o){const d=defaultState();o=Object.assign(d,o||{});o.settings=Object.assign(defaultState().settings,o.settings||{});o.sel=Object.assign({sp:'daisy',tag:0},o.sel||{});if(!SP[o.sel.sp])o.sel.sp='daisy';if(!Array.isArray(o.sessions))o.sessions=[];if(!Array.isArray(o.unlocked))o.unlocked=['daisy','clover'];if(!LIMITS[o.mode])o.mode='focus';return o;}
+function normalize(o){const d=defaultState();o=Object.assign(d,o||{});o.settings=Object.assign(defaultState().settings,o.settings||{});o.sel=Object.assign({sp:'daisy',tag:0},o.sel||{});if(!SP[o.sel.sp])o.sel.sp='daisy';if(!Array.isArray(o.sessions))o.sessions=[];if(!Array.isArray(o.unlocked))o.unlocked=['daisy','clover'];if(!LIMITS[o.mode])o.mode='focus';if(!o.build||!ITEM[o.build.cur])o.build={cur:'mushrooms',prog:(o.build&&o.build.prog)||{}};if(!o.grow||typeof o.grow!=='object')o.grow={};return o;}
 function merge(a,b){
   if(!b||!Array.isArray(b.sessions))return a;b=normalize(JSON.parse(JSON.stringify(b)));
   const ra=a.resetAt||0,rb=b.resetAt||0,reset=Math.max(ra,rb);
@@ -591,7 +605,7 @@ function endTs(a){return a.start+a.dur*60000;}
 function start(){
   ensureAudio();const mode=S.mode;let dur=mode==='work'?WORK_CAP:curDur();if(mode==='focus'&&dur<minFor('focus')){dur=minFor('focus');S.settings.focus=dur;}
   const ni=$('#noteIn'),withNote=mode==='focus'||mode==='work',note=withNote?ni.value.trim().slice(0,120):'';if(withNote)ni.value='';
-  S.active={id:uid(),kind:mode,start:Date.now(),dur,sp:S.sel.sp,tag:S.sel.tag,note};afterglow=null;lastBlock=-1;
+  S.active={id:uid(),kind:mode,start:Date.now(),dur,sp:S.sel.sp,tag:S.sel.tag,note};if(mode==='work')S.active.build0=JSON.parse(JSON.stringify(S.build));afterglow=null;lastBlock=-1;
   if(withNote)startAmbient(S.settings.sound);
   heartbeat();lockOn();scheduleEnd(S.active);commit();
   if(mode==='focus')autoNotify('Ha piantato '+artName(SP[S.sel.sp]).replace(/^U/,'u')+' · '+dur+' min'+(note?' · '+note:''));else if(mode==='work')autoNotify('Ha iniziato a lavorare con lo gnomo'+(note?': '+note:''));
@@ -621,33 +635,36 @@ function completeFocus(){
   if(rare)lines.push(['Fioritura dorata',10]);
   const buddy=findBuddy(a.start,Date.now());if(buddy)lines.push(['In compagnia di '+nm(buddy),3]);
   if(a.together)lines.push(['Salice di coppia con '+nm(a.together.with),5]);
+  const nSt=stagesOf(a.sp);let gr=null,grown=true;
+  if(nSt>1){gr=Object.assign({id:uid(),done:0},S.grow[a.sp]||{});gr.done++;grown=gr.done>=nSt;if(grown){delete S.grow[a.sp];lines.push([sp.n+' adult'+(sp.f?'a':'o')+' dopo '+nSt+' sessioni',nSt*3]);}else S.grow[a.sp]=gr;}
   const earned=lines.reduce((x,l)=>x+l[1],0);
-  clearEnd();S.sessions.push([a.id,a.start,min,a.sp,a.tag,1,rare?1:0,earned,a.note||'',null,a.together?a.together.id:null]);markSess(a.start);
+  clearEnd();S.sessions.push([a.id,a.start,min,a.sp,a.tag,1,rare?1:0,earned,a.note||'',null,a.together?a.together.id:null].concat(gr?[gr.id,gr.done,nSt]:[]));markSess(a.start);
   let unlockedTomato=false;if(cycleDone&&!S.unlocked.includes('tomato')){S.unlocked.push('tomato');unlockedTomato=true;}
   if(cycleDone)S.cycle=0;
   S.active=null;afterglow={sp:a.sp,rare};stopAmbient();lockOff();
   const next=cycleDone?'long':'short';S.mode=next;commit();chime();bumpSeeds();
   const nb=S.settings[next];
-  sheet(`<div class="result"><canvas id="resCv"></canvas><h2>${artName(sp)} è cresciut${sp.f?'a':'o'} nel tuo bosco</h2><p class="muted">${min} minuti di concentrazione · ${TAGS[a.tag]?TAGS[a.tag].n:''}${rare?' · esemplare dorato, capita di rado':''}</p>
+  sheet(`<div class="result"><canvas id="resCv"></canvas><h2>${gr&&!grown?artName(sp)+' cresce: '+gr.done+' di '+nSt:artName(sp)+' è cresciut'+(sp.f?'a':'o')+' nel tuo bosco'}</h2>${gr?`<div class="stagebar">${Array.from({length:nSt},(_,i)=>`<i class="${i<gr.done?'on':''}"></i>`).join('')}</div>`:''}<p class="muted">${gr&&!grown?'Ancora '+(nSt-gr.done)+(nSt-gr.done===1?' sessione':' sessioni')+' per farl'+(sp.f?'a':'o')+' diventare adult'+(sp.f?'a':'o')+'. Puoi continuare anche domani. ':''}${min} minuti di concentrazione · ${TAGS[a.tag]?TAGS[a.tag].n:''}${rare?' · esemplare dorato, capita di rado':''}</p>
   <label class="notelbl" for="resNote">Cosa hai fatto?</label><textarea id="resNote" data-sid="${esc(a.id)}" maxlength="120" placeholder="Es. capitolo 3 di Storia, esercizi 1–8">${esc(a.note||'')}</textarea>
   <ul class="earn">${lines.map(l=>`<li><span>${esc(l[0])}</span><b>+${l[1]}</b></li>`).join('')}${unlockedTomato?'<li class="unlock"><span>Hai sbloccato il Pomodoro, la pianta di chi completa un ciclo</span><b>nuovo</b></li>':''}</ul>
   <div class="total">${SEED_SVG}+${earned} semi</div>
   <div class="row"><button class="btn primary" data-act="break">${next==='long'?'Pausa lunga':'Pausa'} di ${nb} min</button><button class="btn quiet" data-act="again">Un altro pomodoro</button><button class="btn ghost" data-act="garden">Guarda il bosco</button></div></div>`);
-  drawRes(sp,{rare,g:1});
+  drawRes(sp,{rare,g:gr&&!grown?Math.max(.2,gr.done/nSt):1});
   autoNotify(artName(sp)+' è cresciut'+(sp.f?'a':'o')+' · '+min+' min'+(a.note?' · '+a.note:''));
 }
 function completeWork(){
   const a=S.active;if(!a||a.kind!=='work')return;const now=Date.now();const w=workBuilt(a,now);const min=Math.floor(w.el/60000);
   if(min<1){cancel();return;}
+  const sim=simWork(a.build0||S.build,min);w.built=sim.built;S.build=sim.b;
   const lines=[['Lavoro · '+fmtMin(min),Math.floor(min/5)]];
-  if(w.built.length)lines.push(['Lavoretti dello gnomo · '+w.built.length,w.built.length]);
+  w.built.forEach(k=>lines.push(['Completato: '+ITEM[k].n+' · '+ITEM_H[k]+' ore di lavoro',Math.round(ITEM_H[k]*2)]));
   bonusLines(a,lines);
   const buddy=findBuddy(a.start,Math.min(now,endTs(a)));if(buddy)lines.push(['In compagnia di '+nm(buddy),3]);
   const earned=lines.reduce((x,l)=>x+l[1],0);
   clearEnd();S.sessions.push([a.id,a.start,min,'work',a.tag,1,0,earned,a.note||'',w.built]);markSess(a.start);
   S.active=null;afterglow={work:true,items:w.built};lastBlock=-1;stopAmbient();lockOff();S.mode='short';commit();chime();bumpSeeds();
   const names=w.built.map(k=>ITEM[k].n);
-  sheet(`<div class="result"><canvas id="resCv"></canvas><h2>Turno finito: ${fmtMin(min)}</h2><p class="muted">${names.length?'Lo gnomo ha aggiunto al bosco: '+esc(names.join(', '))+'.':'Il primo lavoretto arriva dopo 15 minuti: la prossima volta lo gnomo costruisce qualcosa.'}</p>
+  sheet(`<div class="result"><canvas id="resCv"></canvas><h2>${names.length?'Lo gnomo ha finito: '+esc(names.join(', ')):'Turno finito: '+fmtMin(min)}</h2><p class="muted">${names.length?'È già nel bosco. ':''}Ora sta costruendo ${esc(ITEM[S.build.cur].n.toLowerCase())}: ${fmtH(S.build.prog[S.build.cur]||0)} di ${ITEM_H[S.build.cur]} ore.</p>
   <label class="notelbl" for="resNote">Su cosa hai lavorato?</label><textarea id="resNote" data-sid="${esc(a.id)}" maxlength="120" placeholder="Es. relazione per il cliente, mail arretrate">${esc(a.note||'')}</textarea>
   <ul class="earn">${lines.map(l=>`<li><span>${esc(l[0])}</span><b>+${l[1]}</b></li>`).join('')}</ul>
   <div class="total">${SEED_SVG}+${earned} semi</div>
@@ -660,7 +677,7 @@ function checkActive(){
   const a=S.active;if(!a)return;const now=Date.now();
   if(a.kind==='focus'&&S.settings.strict){let seen=0;try{seen=+localStorage.getItem(LS+'.seen')||0;}catch(e){}
     if(seen&&now-seen>15000&&endTs(a)>seen+10000&&!document.hidden){giveUp('Hai lasciato Sottobosco per più di 10 secondi in modalità rigorosa.');return;}}
-  if(a.kind==='work'){const b=Math.floor((Math.min(now,endTs(a))-a.start)/BLOCK_MS);if(lastBlock>=0&&b>lastBlock&&!document.hidden){toast('Lo gnomo ha finito: '+ITEM[itemFor(a.id,b-1)].n+'. Ne inizia un altro.');softChime();}lastBlock=b;}
+  if(a.kind==='work'){const w=workBuilt(a,now);if(lastBlock>=0&&w.b>lastBlock&&!document.hidden){toast('Lo gnomo ha finito: '+ITEM[w.built[w.built.length-1]].n+'! Ora passa a: '+ITEM[w.cur].n+'.');chime();}lastBlock=w.b;}
   if(now>=endTs(a)){a.kind==='focus'?completeFocus():a.kind==='work'?completeWork():completeBreak();}
 }
 function softChime(){if(!S.settings.chime||!ensureAudio())return;const n=AC.currentTime+.03;[784,1046.5].forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;const s0=n+i*.12;g.gain.setValueAtTime(0,s0);g.gain.linearRampToValueAtTime(.12,s0+.01);g.gain.exponentialRampToValueAtTime(.0005,s0+1.2);o.connect(g);g.connect(master);o.start(s0);o.stop(s0+1.3);});}
@@ -691,6 +708,7 @@ $('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim'){saveSheetNote
   if(act==='sp'){const k=b.dataset.k;if(!S.unlocked.includes(k)){closeSheet();show('shop');return;}S.sel.sp=k;if(S.settings.focus<SP[k].min)S.settings.focus=SP[k].min;afterglow=null;closeSheet();commit();}
   if(act==='sendStatus'){const t=$('#statusIn');sendStatus(t?t.value:'');closeSheet();}
   if(act==='clearStatus'){S.status=null;commit();closeSheet();toast('Stato tolto.');}
+  if(act==='prj'){S.build.cur=b.dataset.k;closeSheet();commit();toast('Lo gnomo ora lavora a: '+ITEM[S.build.cur].n+'.');}
   if(act==='tag'){S.sel.tag=+b.dataset.i;closeSheet();commit();}
 });
 
@@ -712,20 +730,19 @@ const ringCol=k=>k==='focus'?'var(--accent)':k==='work'?'var(--pollen)':'var(--s
 function renderClock(){
   const a=S.active,ring=$('#ringProg'),knob=$('#knob');
   if(a&&a.kind==='work'){const now=Date.now(),w=workBuilt(a,now);$('#time').textContent=fmtUp(w.el/1000);ring.setAttribute('stroke-dashoffset',String(100-w.prog*100));ring.setAttribute('stroke',ringCol('work'));knob.style.display='none';
-    const left=Math.max(1,Math.ceil((BLOCK_MS-w.el%BLOCK_MS)/60000));
-    $('#sub').textContent=w.el<10000?'Hai 10 secondi per annullare.':'Lo gnomo costruisce: '+ITEM[w.cur].n+' · pronto tra '+left+' min'+(w.built.length?' · '+w.built.length+' già fatti':'');
+    $('#sub').textContent=w.el<10000?'Hai 10 secondi per annullare.':'Lo gnomo costruisce: '+ITEM[w.cur].n+' · '+fmtH(w.done)+' di '+ITEM_H[w.cur]+' h'+(w.built.length?' · '+w.built.length+' finiti in questo turno':'');
     $('#ghostBtn').hidden=w.el>=10000;document.title=fmtUp(w.el/1000)+' · Sottobosco';}
   else if(a){const total=a.dur*60,left=(endTs(a)-Date.now())/1000;$('#time').textContent=fmtClock(left);const frac=clamp(left/total);ring.setAttribute('stroke-dashoffset',String(100-frac*100));knob.style.display='none';
     ring.setAttribute('stroke',ringCol(a.kind));
     const el=Date.now()-a.start;$('#sub').textContent=a.kind==='focus'?(el<10000?'Hai 10 secondi per annullare senza perdere la pianta.':QUOTES[quoteI]):'Alzati, bevi un bicchiere d’acqua, guarda lontano.';
     if(a.kind==='focus'){$('#ghostBtn').hidden=el>=10000;$('#holdBtn').hidden=el<10000;}
     document.title=fmtClock(left)+' · Sottobosco';
-  }else if(S.mode==='work'){$('#time').textContent='00:00';ring.setAttribute('stroke-dashoffset','100');knob.style.display='none';
-    $('#sub').textContent='Lavora quanto ti serve: ogni 15 minuti lo gnomo aggiunge qualcosa al bosco. Puoi usare il telefono, qui non appassisce niente.';document.title='Sottobosco';}
+  }else if(S.mode==='work'){const k=S.build.cur,dn=S.build.prog[k]||0;$('#time').textContent='00:00';ring.setAttribute('stroke-dashoffset',String(100-clamp(dn/costOf(k))*100));ring.setAttribute('stroke',ringCol('work'));knob.style.display='none';
+    $('#sub').textContent='Progetto: '+ITEM[k].n+' · '+fmtH(dn)+' di '+ITEM_H[k]+' ore. Ogni ora di lavoro lo avvicina, anche in giorni diversi.';document.title='Sottobosco';}
   else{const L=LIMITS[S.mode],d=curDur(),frac=d/L.max;$('#time').textContent=fmtClock(d*60);ring.setAttribute('stroke-dashoffset',String(100-frac*100));ring.setAttribute('stroke',ringCol(S.mode));
     knob.style.display='';const ang=frac*TAU-Math.PI/2;knob.setAttribute('cx',150+Math.cos(ang)*140);knob.setAttribute('cy',150+Math.sin(ang)*140);knob.setAttribute('stroke',ringCol(S.mode));
     dial.setAttribute('aria-valuemin',minFor(S.mode));dial.setAttribute('aria-valuemax',L.max);dial.setAttribute('aria-valuenow',d);dial.setAttribute('aria-valuetext',d+' minuti');
-    const sp=SP[S.sel.sp];$('#sub').textContent=S.mode==='focus'?(sp.min>10&&d<=sp.min?sp.n+': almeno '+sp.min+' minuti per crescere.':'Trascina l’anello per scegliere la durata'):'Una pausa vera fa crescere meglio il prossimo pomodoro.';
+    const sp=SP[S.sel.sp],nS=stagesOf(sp.k),dS=growDone(sp.k);$('#sub').textContent=S.mode==='focus'?(nS>1?sp.n+': '+(dS?dS+' di '+nS+' sessioni fatte':nS+' sessioni per farl'+(sp.f?'a':'o')+' crescere')+(sp.min>10?', da almeno '+sp.min+' min':''):sp.min>10&&d<=sp.min?sp.n+': almeno '+sp.min+' minuti per crescere.':'Trascina l’anello per scegliere la durata'):'Una pausa vera fa crescere meglio il prossimo pomodoro.';
     document.title='Sottobosco';}
 }
 function renderFocus(){
@@ -740,6 +757,7 @@ function renderFocus(){
   $('#spChip').disabled=!!a;$('#tagChip').disabled=!!a;
   const withNote=mode==='focus'||mode==='work';
   $('#spChip').hidden=mode!=='focus';$('#tagChip').hidden=!withNote;
+  {const pc=$('#prjChip');if(pc){pc.hidden=mode!=='work';pc.disabled=!!a;const k=S.build.cur;$('#prjChipN').textContent=ITEM[k].n+' · '+Math.round(clamp((S.build.prog[k]||0)/costOf(k))*100)+'%';}}
   const main=$('#mainBtn'),ghost=$('#ghostBtn'),hold=$('#holdBtn');
   if(!a){main.hidden=false;main.textContent=mode==='focus'?'Pianta':mode==='work'?'Inizia a lavorare':'Inizia la pausa';hold.hidden=true;ghost.hidden=withNote;ghost.textContent='Salta la pausa';}
   else if(a.kind==='focus'){main.hidden=true;ghost.textContent='Annulla';}
@@ -772,9 +790,12 @@ $('#ghostBtn').addEventListener('click',()=>{const a=S.active;if(!a){S.mode='foc
   dial.addEventListener('keydown',e=>{if(S.active||S.mode==='work')return;const L=LIMITS[S.mode];let d=0;if(e.key==='ArrowRight'||e.key==='ArrowUp')d=L.step;if(e.key==='ArrowLeft'||e.key==='ArrowDown')d=-L.step;if(!d)return;e.preventDefault();S.settings[S.mode]=clamp(curDur()+d,minFor(S.mode),L.max);commit();});
 })();
 $('#spChip').addEventListener('click',()=>{
-  sheet(`<h2>Cosa vuoi far crescere?</h2><div class="pick">${SPECIES.filter(sp=>sp.req!=='together').map(sp=>{const u=S.unlocked.includes(sp.k);return`<button data-act="sp" data-k="${sp.k}" aria-pressed="${S.sel.sp===sp.k}" class="${u?'':'locked'}"><canvas data-th="${sp.k}"></canvas>${sp.n}<small>${u?(sp.min>10?'da '+sp.min+' min':'da 10 min'):(sp.req?'completa un ciclo':sp.price+' semi')}</small></button>`;}).join('')}</div>`);
+  sheet(`<h2>Cosa vuoi far crescere?</h2><div class="pick">${SPECIES.filter(sp=>sp.req!=='together').map(sp=>{const u=S.unlocked.includes(sp.k);return`<button data-act="sp" data-k="${sp.k}" aria-pressed="${S.sel.sp===sp.k}" class="${u?'':'locked'}"><canvas data-th="${sp.k}"></canvas>${sp.n}<small>${u?growLine(sp.k)+(growDone(sp.k)?' · '+growDone(sp.k)+' fatte':'')+(sp.min>10?' da '+sp.min+' min':''):(sp.req?'completa un ciclo':sp.price+' semi')}</small></button>`;}).join('')}</div>`);
   requestAnimationFrame(()=>document.querySelectorAll('#sheet canvas[data-th]').forEach(cv=>thumb(cv,SP[cv.dataset.th])));
 });
+$('#prjChip').addEventListener('click',()=>{if(S.active)return;
+  sheet(`<h2>Cosa costruisce lo gnomo?</h2><p class="muted small" style="text-align:center;margin-top:4px">Le ore si sommano turno dopo turno. Se cambi progetto, quello lasciato resta a metà e lo riprendi quando vuoi.</p><div class="list">${ITEMS.slice().sort((a,b)=>ITEM_H[a.k]-ITEM_H[b.k]).map(it=>{const dn=S.build.prog[it.k]||0,n=builtCount(it.k);return`<button data-act="prj" data-k="${it.k}" aria-pressed="${S.build.cur===it.k}"><canvas data-it="${it.k}" style="width:44px;height:44px;flex:none"></canvas><span style="flex:1;min-width:0"><b style="display:block">${it.n}</b><span class="small muted">${ITEM_H[it.k]} ore${dn?' · '+fmtH(dn)+' fatte':''}${n?' · costruito '+(n===1?'una volta':n+' volte'):''}</span><span class="pbar"><i style="width:${clamp(dn/costOf(it.k))*100}%"></i></span></span></button>`;}).join('')}</div>`);
+  requestAnimationFrame(()=>document.querySelectorAll('#sheet canvas[data-it]').forEach(cv=>thumbItem(cv,cv.dataset.it)));});
 $('#tagChip').addEventListener('click',()=>{sheet(`<h2>A cosa stai lavorando?</h2><div class="list">${TAGS.map((t,i)=>`<button data-act="tag" data-i="${i}" aria-pressed="${S.sel.tag===i}"><span class="sw" style="background:${t.c}"></span>${t.n}</button>`).join('')}</div>`);});
 $('#sndChip').addEventListener('click',()=>{const i=SOUNDS.findIndex(x=>x[0]===S.settings.sound);const next=SOUNDS[(i+1)%SOUNDS.length][0];S.settings.sound=next;commit();if(busy(S.active))startAmbient(next);else previewSound(next);});
 
@@ -793,11 +814,11 @@ function frame(now){
 function drawStage(c,W,bx,by,t,a){
   if(a&&a.kind==='work'){const w=workBuilt(a,Date.now());workScene(c,bx,by,W,t,{built:w.built,cur:w.cur,prog:w.prog,act:ITEM[w.cur].tool});return;}
   if(!a&&afterglow&&afterglow.work){workScene(c,bx,by,W,t,{built:afterglow.items,act:'wave'});return;}
-  if(!a&&S.mode==='work'){workScene(c,bx,by,W,t,{built:[],act:'idle'});return;}
+  if(!a&&S.mode==='work'){const k=S.build.cur;workScene(c,bx,by,W,t,{built:[],cur:k,prog:Math.max(.06,clamp((S.build.prog[k]||0)/costOf(k))),act:'idle'});return;}
   let sp,g=1,o={anim:true};
-  if(a&&a.kind==='focus'){sp=SP[a.sp];g=clamp((Date.now()-a.start)/(a.dur*60000));}
+  if(a&&a.kind==='focus'){sp=SP[a.sp];const n=stagesOf(a.sp),fr=clamp((Date.now()-a.start)/(a.dur*60000));g=n>1?clamp((growDone(a.sp)+fr)/n):fr;}
   else if(afterglow&&afterglow.sp){sp=SP[afterglow.sp];o.dead=afterglow.dead;o.rare=afterglow.rare;g=afterglow.dead?.75:1;}
-  else{sp=SP[S.sel.sp];g=1;}
+  else{sp=SP[S.sel.sp];const n=stagesOf(sp.k),dn=growDone(sp.k);g=n>1&&dn?Math.max(.15,dn/n):1;}
   drawPlant(c,sp,bx,by-2,W*.44,g,t,o);
   if(a&&!busy(a)&&!REDUCED){butterfly(c,bx+Math.sin(t*.7)*W*.22,by-W*.38+Math.sin(t*1.6)*W*.06,t,W*.022);}
 }
@@ -837,7 +858,8 @@ function renderGarden(){
   $('#gEmpty').hidden=items.length>0;$('#gTip').hidden=true;
   renderLog(items,shared);
   // what stands on the meadow: one plant per pomodoro, one object per finished gnome job
-  const ents=[];items.forEach(x=>{if(isWork(x.s))(x.s[9]||[]).forEach((k,i)=>{if(ITEM[k])ents.push({type:'item',key:k,s:x.s,o:x.o,ts:x.s[1]+i*BLOCK_MS});});else ents.push({type:'plant',s:x.s,o:x.o,ts:x.s[1]});});
+  const ents=[],growing={};items.forEach(x=>{if(!isWork(x.s)&&x.s[11]&&x.s[5]===1){const key=x.o+'|'+x.s[11];const cur=growing[key];if(!cur||x.s[12]>cur.s[12])growing[key]={type:'plant',s:x.s,o:x.o,ts:cur?cur.ts:x.s[1],g:Math.max(.18,x.s[12]/x.s[13])};return;}if(isWork(x.s))(x.s[9]||[]).forEach((k,i)=>{if(ITEM[k])ents.push({type:'item',key:k,s:x.s,o:x.o,ts:x.s[1]+i*BLOCK_MS});});else ents.push({type:'plant',s:x.s,o:x.o,ts:x.s[1]});});
+  Object.values(growing).forEach(e=>ents.push(e));
   ents.sort((a,b)=>a.ts-b.ts);
   const now=Date.now();const working=[];if(S.active&&S.active.kind==='work'&&pick({o:myId||'me'}))working.push(myId||'me');others.forEach((o,id)=>{const a=o.prof&&o.prof.active;if(a&&a.kind==='work'&&endTs(a)>now&&pick({o:id}))working.push(id);});
   const showLive=gOff===0?working:[];
@@ -867,14 +889,14 @@ function renderGarden(){
   gPlaced.slice().sort((p,q)=>(p.cell.i+p.cell.j)-(q.cell.i+q.cell.j)).forEach(p=>{const{cell}=p;
     if(p.type!=='item'||!ITEM[p.key].flat)oval(c,cell.x,cell.y+1,tw*.2,th*.18,0,'rgba(40,60,30,.18)');
     if(shared&&gWho==='all'&&p.type!=='gnome'){c.strokeStyle=ownerColor(p.o);c.lineWidth=2;c.beginPath();c.ellipse(cell.x,cell.y+1,tw*.24,th*.24,0,0,TAU);c.stroke();}
-    if(p.type==='plant'){const s=p.s,sp=SP[s[3]]||SP.daisy;drawPlant(c,sp,cell.x,cell.y,tw*(.72+.5*clamp(s[2]/120)),s[5]?1:.75,1.3+cell.i,{dead:!s[5],rare:!!s[6]});}
+    if(p.type==='plant'){const s=p.s,sp=SP[s[3]]||SP.daisy,big=stagesOf(sp.k)>1;drawPlant(c,sp,cell.x,cell.y,tw*(big?(.95+.35*(p.g||1)):(.72+.5*clamp(s[2]/120))),p.g!=null?p.g:(s[5]?1:.75),1.3+cell.i,{dead:!s[5],rare:!!s[6]});}
     else if(p.type==='item')drawItem(c,p.key,cell.x,cell.y,tw*(ITEM[p.key].flat?.95:.8),1,1+cell.i);
     else if(p.type==='animal')drawAnimal(c,p.key,cell.x,cell.y,tw*.55,1+cell.i);
     else drawGnome(c,cell.x,cell.y,tw*.6,1.5,'hoe');});
   if(isNight()){c.fillStyle='rgba(12,24,48,.22)';c.fillRect(0,0,CW,H);const rf=rng(99);for(let q=0;q<Math.min(14,4+gPlaced.length);q++)glow(c,ox+(rf()-.5)*n*tw*.8,oy+rf()*n*th,tw*.22,.5);}
   if(CW>W){const m=$('#meadow');if(m.dataset.c!==gP+gOff+CW){m.dataset.c=gP+gOff+CW;m.scrollLeft=(CW-W)/2;}}
 }
-function plantLabel(s){if(isWork(s))return'Turno di lavoro';const sp=SP[s[3]]||SP.daisy,e=sp.f?'a':'o';return sp.n+(s[6]?' dorat'+e:'')+(s[5]?'':' appassit'+e);}
+function plantLabel(s){if(isWork(s))return'Turno di lavoro';const sp=SP[s[3]]||SP.daisy,e=sp.f?'a':'o';return sp.n+(s[6]?' dorat'+e:'')+(s[5]?'':' appassit'+e)+(s[13]>1?(s[12]<s[13]?' · sessione '+s[12]+' di '+s[13]:' · adult'+e):'');}
 function workLine(s){const it=(s[9]||[]).map(k=>ITEM[k]?ITEM[k].n:'').filter(Boolean);return it.length?'Lo gnomo ha costruito: '+it.join(', '):'Troppo breve per un lavoretto';}
 function renderLog(items,shared){
   gRows=items.slice().sort((x,y)=>y.s[1]-x.s[1]).slice(0,80);
@@ -907,14 +929,13 @@ function renderShop(){
   const have=seeds(),counts={};okS().forEach(s=>counts[s[3]]=(counts[s[3]]||0)+1);
   $('#shop').innerHTML=SPECIES.map(sp=>{const u=S.unlocked.includes(sp.k);let meta;
     if(sp.req==='together')meta=counts[sp.k]?`<span class="tag-ok">${counts[sp.k]} cresciut${counts[sp.k]===1?'o':'i'} insieme</span>`:'<span>Cresce solo con un pomodoro insieme</span>';
-    else if(u)meta=`<span class="tag-ok">${S.sel.sp===sp.k?'Selezionata':'Nel tuo vivaio'}</span><span>${counts[sp.k]||0} cresciut${sp.f?'e':'i'}</span>`;
+    else if(u)meta=`<span class="tag-ok">${S.sel.sp===sp.k?'Selezionata':'Nel tuo vivaio'}</span><span>${growLine(sp.k)}${growDone(sp.k)?' · '+growDone(sp.k)+' fatte':''}</span>`;
     else if(sp.req)meta=`<span>Si sblocca completando un ciclo di ${S.settings.every} pomodori</span>`;
-    else meta=`<button class="buy" data-buy="${sp.k}" ${have<sp.price?'disabled':''}>${SEED_SVG}${sp.price}</button><span>${sp.min>10?'min '+sp.min+' min':''}</span>`;
+    else meta=`<button class="buy" data-buy="${sp.k}" ${have<sp.price?'disabled':''}>${SEED_SVG}${sp.price}</button><span>${growLine(sp.k)}${sp.min>10?' da '+sp.min+' min':''}</span>`;
     const shown=u||(sp.req==='together'&&counts[sp.k]);
     return`<div class="sp ${shown?'':'locked'} ${S.sel.sp===sp.k?'sel':''}" ${u?`data-use="${sp.k}" role="button" tabindex="0"`:''}><canvas data-th="${sp.k}"></canvas><h3>${sp.n}</h3><p class="lat">${sp.l}</p><div class="meta">${meta}</div></div>`;}).join('');
   const built={};S.sessions.forEach(s=>{if(s[3]==='work')(s[9]||[]).forEach(k=>built[k]=(built[k]||0)+1);});
-  const when=['dal primo quarto d’ora','dopo 30 minuti di turno','dopo 45 minuti di turno'];
-  $('#crafts').innerHTML=ITEMS.map(it=>{const n=built[it.k]||0;return`<div class="sp ${n?'':'locked'}"><canvas data-it="${it.k}"></canvas><h3>${it.n}</h3><div class="meta">${n?`<span class="tag-ok">Costruito ${n===1?'una volta':n+' volte'}</span>`:`<span>Arriva ${when[it.tier]}</span>`}</div></div>`;}).join('');
+  $('#crafts').innerHTML=ITEMS.slice().sort((a,b)=>ITEM_H[a.k]-ITEM_H[b.k]).map(it=>{const n=built[it.k]||0,dn=S.build.prog[it.k]||0;return`<div class="sp ${n?'':'locked'}"><canvas data-it="${it.k}"></canvas><h3>${it.n}</h3><div class="meta"><span>${ITEM_H[it.k]} ore di lavoro</span>${n?`<span class="tag-ok">Costruito ${n===1?'una volta':n+' volte'}</span>`:dn?`<span>${fmtH(dn)} fatte</span>`:''}</div>${dn?`<span class="pbar"><i style="width:${clamp(dn/costOf(it.k))*100}%"></i></span>`:''}</div>`;}).join('');
   const fauna=faunaNow(),z=forestStats();
   $('#fauna').innerHTML=ANIMALS.map(an=>{const has=fauna.includes(an.k);return`<div class="sp ${has?'':'locked'}"><canvas data-an="${an.k}"></canvas><h3>${an.n}</h3><div class="meta">${has?'<span class="tag-ok">Vive nel bosco</span>':`<span>${an.hint}</span>`}</div></div>`;}).join('');
   requestAnimationFrame(()=>{document.querySelectorAll('#fauna canvas[data-an]').forEach(cv=>{const rr=cv.getBoundingClientRect();const w=rr.width||120,hh=rr.height||108;const cc=fitCanvas(cv,w,hh);drawAnimal(cc,cv.dataset.an,w/2,hh*.85,Math.min(w,hh)*.9,1);});document.querySelectorAll('#shop canvas[data-th]').forEach(cv=>thumb(cv,SP[cv.dataset.th],{scale:.8}));document.querySelectorAll('#crafts canvas[data-it]').forEach(cv=>thumbItem(cv,cv.dataset.it));});

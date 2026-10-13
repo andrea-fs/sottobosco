@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Onest:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=6">
 </head>
 <body>
 <div id="app" hidden>
@@ -60,6 +60,7 @@
       <input class="note" id="noteIn" maxlength="120" placeholder="Cosa farai in questo pomodoro?" autocomplete="off" enterkeyhint="done" aria-label="Cosa farai in questo pomodoro">
       <div class="chips" id="chips">
         <button class="chip" id="spChip"><canvas width="20" height="20" style="width:20px;height:20px" id="spChipCv"></canvas><span id="spChipN">Margherita</span></button>
+        <button class="chip" id="prjChip" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4l6 6-3 3-6-6zM11 7l-7 7v4h4l7-7"/></svg><span id="prjChipN">Progetto</span></button>
         <button class="chip" id="tagChip"><span class="sw" id="tagSw"></span><span id="tagN">Studio</span></button>
         <button class="chip" id="sndChip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg><span id="sndN">Silenzio</span></button>
       </div>
@@ -103,7 +104,7 @@
     <section class="view" id="v-shop" hidden aria-label="Serra">
       <div class="sec-h"><h1>La serra</h1><p>Ogni 5 minuti di concentrazione vale un seme.</p></div>
       <div class="shop" id="shop"></div>
-      <div class="sec-h" style="margin-top:8px"><h1 style="font-size:24px">I lavoretti dello gnomo</h1><p>In modalità Lavoro lo gnomo costruisce un oggetto ogni 15 minuti. I turni lunghi portano le costruzioni più grandi.</p></div>
+      <div class="sec-h" style="margin-top:8px"><h1 style="font-size:24px">I lavoretti dello gnomo</h1><p>In modalità Lavoro lo gnomo costruisce un progetto alla volta: le ore si sommano turno dopo turno, anche in giorni diversi. La casetta chiede 60 ore.</p></div>
       <div class="shop" id="crafts"></div>
       <div class="sec-h" style="margin-top:8px"><h1 style="font-size:24px">La fauna del bosco</h1><p>Gli animali si trasferiscono da voi quando raggiungete dei traguardi, contando le piante di tutti e due.</p></div>
       <div class="shop" id="fauna"></div>
@@ -148,9 +149,9 @@
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="config.js?v=4"></script>
+<script src="config.js?v=6"></script>
 <script src="vendor/supabase.js"></script>
-<script src="core/core.js?v=4"></script>
-<script src="forest-boot.js?v=4"></script>
+<script src="core/core.js?v=6"></script>
+<script src="forest-boot.js?v=6"></script>
 </body>
 </html>
